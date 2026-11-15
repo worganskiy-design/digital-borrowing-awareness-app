@@ -43,6 +43,22 @@
 <label>Date repaid <input id="repay-date" type="date"></label>
 <button id="btn-save-repayment">Save repayment</button>
 
+<h2>Next expected funds</h2>
+<label>Source
+  <select id="fund-source">
+    <option>HELB</option>
+    <option>Allowance</option>
+    <option>Salary</option>
+    <option>Other</option>
+  </select>
+</label>
+<label>Expected amount (KES) <input id="fund-amount" type="number" min="1"></label>
+<label>Expected date <input id="fund-date" type="date"></label>
+<button id="btn-save-funding">Save expected funds</button>
+
+<h2>Summary</h2>
+<div id="summary"></div>
+
 <h2>My loans</h2>
 <div id="loan-list"></div>
 </section>

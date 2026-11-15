@@ -78,10 +78,11 @@ async function loadLoans() {
 
   const list = document.getElementById("loan-list");
   const dropdown = document.getElementById("repay-loan");
+  const rows = [];
   list.innerHTML = "";
   dropdown.innerHTML = "";
 
-  if (loans.length === 0) { list.textContent = "No loans recorded yet."; return; }
+  if (loans.length === 0) { list.textContent = "No loans recorded yet."; showSummary([]); return; }
 
   loans.forEach(loan => {
     // add up the repayments that belong to this loan
@@ -89,10 +90,12 @@ async function loadLoans() {
       .filter(r => r.loan_id === loan.loan_id)
       .reduce((sum, r) => sum + Number(r.amount), 0);
     const owed = Number(loan.amount_borrowed) + Number(loan.fee) - repaid;
+    rows.push({ amount: Number(loan.amount_borrowed), fee: Number(loan.fee), owed, due: loan.due_date });
 
     const card = document.createElement("div");
     card.className = "loan-card";
-    card.textContent = `${loan.lender}, borrowed ${loan.date_borrowed}: KES ${loan.amount_borrowed} + fee ${loan.fee} - repaid ${repaid} = KES ${owed} owed`;
+    const costPct = (Number(loan.fee) / Number(loan.amount_borrowed)) * 100;
+card.textContent = `${loan.lender}, borrowed ${loan.date_borrowed}: ${money(loan.amount_borrowed)} + fee ${money(loan.fee)} (${costPct.toFixed(1)}% of the amount) - repaid ${money(repaid)} = ${money(owed)} owed`;
     list.appendChild(card);
 
     const option = document.createElement("option");
@@ -100,6 +103,7 @@ async function loadLoans() {
     option.textContent = `${loan.lender} ${loan.date_borrowed} (KES ${owed} owed)`;
     dropdown.appendChild(option);
   });
+  showSummary(rows);
 }
 
 async function addRepayment() {
@@ -120,10 +124,78 @@ async function addRepayment() {
     loadLoans();
   }
 }
+// Format a number as shillings, e.g. 12000 becomes "KES 12,000"
+function money(n) {
+  return "KES " + Math.round(n).toLocaleString("en-KE");
+}
+
+async function addFunding() {
+  const funding = {
+    source: document.getElementById("fund-source").value,
+    expected_amount: Number(document.getElementById("fund-amount").value),
+    expected_date: document.getElementById("fund-date").value
+  };
+  if (!funding.expected_amount || !funding.expected_date) {
+    setStatus("Please enter the expected amount and the date.");
+    return;
+  }
+  const { error } = await db.from("funding").insert(funding);
+  setStatus(error ? error.message : "Expected funds saved.");
+  if (!error) {
+    document.getElementById("fund-amount").value = "";
+    document.getElementById("fund-date").value = "";
+    loadLoans(); // reloading also refreshes the summary
+  }
+}
+
+async function showSummary(rows) {
+  const box = document.getElementById("summary");
+  box.innerHTML = "";
+  const addLine = (text, cls) => {
+    const p = document.createElement("p");
+    p.textContent = text;
+    if (cls) p.className = cls;
+    box.appendChild(p);
+  };
+
+  // Loans that still have a balance
+  const active = rows.filter(r => r.owed > 0);
+  const totalOwed = active.reduce((sum, r) => sum + r.owed, 0);
+  const totalBorrowed = rows.reduce((sum, r) => sum + r.amount, 0);
+  const totalCost = rows.reduce((sum, r) => sum + r.fee, 0);
+  const costPct = totalBorrowed ? (totalCost / totalBorrowed) * 100 : 0;
+
+  addLine("Total owed: " + money(totalOwed));
+  addLine(`Cost of borrowing so far: ${money(totalCost)} (${costPct.toFixed(1)}% of the amount borrowed)`);
+
+  // The next expected funds are the soonest ones from today onwards
+  const today = new Date().toLocaleDateString("en-CA"); // gives YYYY-MM-DD in local time
+  const { data: funds } = await db.from("funding").select("*")
+    .gte("expected_date", today).order("expected_date", { ascending: true }).limit(1);
+
+  if (!funds || funds.length === 0) {
+    addLine("No expected funds recorded. Add the next expected funds to see how much is already due.");
+  } else {
+    const next = funds[0];
+    // Loans with no due date, or a due date on or before the funds date, count as due
+    const committed = active
+      .filter(r => !r.due || r.due <= next.expected_date)
+      .reduce((sum, r) => sum + r.owed, 0);
+    const left = Number(next.expected_amount) - committed;
+
+    addLine(`Next expected funds: ${money(next.expected_amount)} from ${next.source} on ${next.expected_date}`);
+    addLine("Already due to lenders by then: " + money(committed));
+    addLine(left >= 0
+      ? "Left after those loans: " + money(left)
+      : "The loans due are " + money(-left) + " more than the expected funds.");
+  }
+  addLine("These figures are estimates from the details you entered. They are not the lender's statement and not financial advice.", "notice");
+}
 
 document.getElementById("btn-signin").addEventListener("click", signIn);
 document.getElementById("btn-signup").addEventListener("click", signUp);
 document.getElementById("btn-signout").addEventListener("click", signOut);
 document.getElementById("btn-save-loan").addEventListener("click", addLoan);
 document.getElementById("btn-save-repayment").addEventListener("click", addRepayment); // NEW
+document.getElementById("btn-save-funding").addEventListener("click", addFunding);
 start();
