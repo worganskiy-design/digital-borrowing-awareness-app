@@ -21,6 +21,22 @@
 <section id="app-screen" hidden>
   <p>Signed in as <span id="who"></span></p>
   <button id="btn-signout">Sign out</button>
+  <h2>Add a loan</h2>
+<label>Lender
+  <select id="lender">
+    <option>Fuliza</option>
+    <option>M-Shwari</option>
+    <option>Tala</option>
+    <option>Branch</option>
+    <option>Friend or family</option>
+    <option>Other</option>
+  </select>
+</label>
+<label>Amount borrowed (KES) <input id="amount" type="number" min="1"></label>
+<label>Fee or interest charged (KES) <input id="fee" type="number" min="0" value="0"></label>
+<label>Date borrowed <input id="date-borrowed" type="date"></label>
+<label>Due date (optional) <input id="due-date" type="date"></label>
+<button id="btn-save-loan">Save loan</button>
 </section>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

@@ -4,6 +4,7 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 function setStatus(message) {
   document.getElementById("status").textContent = message;
+  window.scrollTo(0, 0); // jump to the top so the message is seen
 }
 
 function showScreens(user) {
@@ -39,7 +40,35 @@ async function start() {
   showScreens(data.session ? data.session.user : null);
 }
 
+async function addLoan() {
+  // Read each box on the form into one object that matches the loans table
+  const loan = {
+    lender: document.getElementById("lender").value,
+    amount_borrowed: Number(document.getElementById("amount").value),
+    fee: Number(document.getElementById("fee").value),
+    date_borrowed: document.getElementById("date-borrowed").value,
+    due_date: document.getElementById("due-date").value || null // empty date becomes null
+  };
+
+  if (!loan.amount_borrowed || !loan.date_borrowed) {
+    setStatus("Please enter the amount and the date borrowed.");
+    return;
+  }
+
+  // user_id is not sent: the database fills it in with the signed-in student's id
+  const { error } = await db.from("loans").insert(loan);
+  setStatus(error ? error.message : "Loan saved.");
+
+  if (!error) {
+    document.getElementById("amount").value = "";
+    document.getElementById("fee").value = 0;
+    document.getElementById("date-borrowed").value = "";
+    document.getElementById("due-date").value = "";
+  }
+}
+
 document.getElementById("btn-signin").addEventListener("click", signIn);
 document.getElementById("btn-signup").addEventListener("click", signUp);
 document.getElementById("btn-signout").addEventListener("click", signOut);
+document.getElementById("btn-save-loan").addEventListener("click", addLoan);
 start();
