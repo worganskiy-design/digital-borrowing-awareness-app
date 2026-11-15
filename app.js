@@ -1,0 +1,1 @@
+document.getElementById("status").textContent = "The app is running.";
