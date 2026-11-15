@@ -37,6 +37,14 @@
 <label>Date borrowed <input id="date-borrowed" type="date"></label>
 <label>Due date (optional) <input id="due-date" type="date"></label>
 <button id="btn-save-loan">Save loan</button>
+<h2>Record a repayment</h2>
+<label>Loan <select id="repay-loan"></select></label>
+<label>Amount repaid (KES) <input id="repay-amount" type="number" min="1"></label>
+<label>Date repaid <input id="repay-date" type="date"></label>
+<button id="btn-save-repayment">Save repayment</button>
+
+<h2>My loans</h2>
+<div id="loan-list"></div>
 </section>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

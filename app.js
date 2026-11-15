@@ -11,6 +11,7 @@ function showScreens(user) {
   document.getElementById("auth-screen").hidden = !!user;
   document.getElementById("app-screen").hidden = !user;
   if (user) document.getElementById("who").textContent = user.email;
+  if (user) loadLoans(); // NEW: show the student's loans as soon as they sign in
 }
 
 async function signUp() {
@@ -59,7 +60,8 @@ async function addLoan() {
   const { error } = await db.from("loans").insert(loan);
   setStatus(error ? error.message : "Loan saved.");
 
-  if (!error) {
+    if (!error) {
+    loadLoans(); // NEW: refresh the list so the new loan appears at once
     document.getElementById("amount").value = "";
     document.getElementById("fee").value = 0;
     document.getElementById("date-borrowed").value = "";
@@ -67,8 +69,61 @@ async function addLoan() {
   }
 }
 
+async function loadLoans() {
+  // Row Level Security means this returns only the signed-in student's loans
+  const { data: loans, error } = await db
+    .from("loans").select("*").order("date_borrowed", { ascending: false });
+  if (error) { setStatus(error.message); return; }
+  const { data: repayments } = await db.from("repayments").select("loan_id, amount");
+
+  const list = document.getElementById("loan-list");
+  const dropdown = document.getElementById("repay-loan");
+  list.innerHTML = "";
+  dropdown.innerHTML = "";
+
+  if (loans.length === 0) { list.textContent = "No loans recorded yet."; return; }
+
+  loans.forEach(loan => {
+    // add up the repayments that belong to this loan
+    const repaid = (repayments || [])
+      .filter(r => r.loan_id === loan.loan_id)
+      .reduce((sum, r) => sum + Number(r.amount), 0);
+    const owed = Number(loan.amount_borrowed) + Number(loan.fee) - repaid;
+
+    const card = document.createElement("div");
+    card.className = "loan-card";
+    card.textContent = `${loan.lender}, borrowed ${loan.date_borrowed}: KES ${loan.amount_borrowed} + fee ${loan.fee} - repaid ${repaid} = KES ${owed} owed`;
+    list.appendChild(card);
+
+    const option = document.createElement("option");
+    option.value = loan.loan_id;
+    option.textContent = `${loan.lender} ${loan.date_borrowed} (KES ${owed} owed)`;
+    dropdown.appendChild(option);
+  });
+}
+
+async function addRepayment() {
+  const repayment = {
+    loan_id: document.getElementById("repay-loan").value,
+    amount: Number(document.getElementById("repay-amount").value),
+    repayment_date: document.getElementById("repay-date").value
+  };
+  if (!repayment.loan_id || !repayment.amount || !repayment.repayment_date) {
+    setStatus("Please choose a loan and enter the amount and the date.");
+    return;
+  }
+  const { error } = await db.from("repayments").insert(repayment);
+  setStatus(error ? error.message : "Repayment saved.");
+  if (!error) {
+    document.getElementById("repay-amount").value = "";
+    document.getElementById("repay-date").value = "";
+    loadLoans();
+  }
+}
+
 document.getElementById("btn-signin").addEventListener("click", signIn);
 document.getElementById("btn-signup").addEventListener("click", signUp);
 document.getElementById("btn-signout").addEventListener("click", signOut);
 document.getElementById("btn-save-loan").addEventListener("click", addLoan);
+document.getElementById("btn-save-repayment").addEventListener("click", addRepayment); // NEW
 start();
