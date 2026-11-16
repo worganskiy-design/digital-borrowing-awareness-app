@@ -295,3 +295,7 @@ document.getElementById("btn-accept").addEventListener("click", acceptTerms);
 document.getElementById("btn-decline").addEventListener("click", declineTerms);
 document.getElementById("btn-delete").addEventListener("click", deleteAccount);
 start();
+// Register the service worker so the phone offers to install the app
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js");
+}
