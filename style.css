@@ -32,3 +32,9 @@ button { background: #1d2733; color: #fff; border: none; cursor: pointer; }
 .tag-after { background: #e6f1fb; color: #0c447c; }
 .tag-ok { background: #e4f3dc; color: #27500a; }
 .tag-neutral { background: #eceef1; color: #444; }
+
+.terms ul { padding-left: 1.2rem; margin: 0.5rem 0 0; }
+.terms li { margin-bottom: 0.7rem; font-size: 16px; line-height: 1.4; }
+.check { display: flex; gap: 10px; align-items: flex-start; font-size: 17px; margin: 0.8rem 0; }
+.check input { width: 26px; height: 26px; margin: 0; flex: none; }
+.secondary-btn { background: #fff; color: #1d2733; border: 1px solid #1d2733; }

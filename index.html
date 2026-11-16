@@ -8,26 +8,49 @@
 </head>
 <body>
   <h1>Digital Borrowing Awareness App</h1>
-  <p id="status" role="status"></p>
+  <p id="status"></p>
 
+  <!-- Screen 1: sign in or register -->
   <section id="auth-screen">
     <h2>Sign in or register</h2>
     <label>Email <input id="email" type="email"></label>
     <label>Password <input id="password" type="password"></label>
     <button id="btn-signin">Sign in</button>
-    <button id="btn-signup" class="secondary">Register</button>
+    <button id="btn-signup">Register</button>
   </section>
 
+  <!-- Screen 2: terms and conditions, shown until the student accepts -->
+  <section id="terms-screen" hidden>
+    <h2>Terms and Conditions</h2>
+    <div class="card terms">
+      <p>Please read this before you use the app.</p>
+      <ul>
+        <li><strong>Estimates only.</strong> The app shows estimates calculated from the figures you enter. It is not your lender's statement, and your lender's records prevail.</li>
+        <li><strong>No financial advice.</strong> The app does not tell you to borrow, repay or stop borrowing.</li>
+        <li><strong>Your data.</strong> The app stores your email address and only the loan amounts, fees, dates and lender types that you enter. It does not read your SMS messages or contacts.</li>
+        <li><strong>Where it is stored.</strong> Your data is stored online with Supabase, and the servers may be outside Kenya. Other app users cannot see your records. The project owner can see the database for testing and support.</li>
+        <li><strong>Your rights.</strong> Under the Kenya Data Protection Act, 2019, you can delete your account and all your data at any time with the Delete my account button.</li>
+        <li><strong>Internet needed.</strong> The app needs an internet connection to save and load data.</li>
+        <li><strong>University project.</strong> This app is part of a student project at Riara University. Results from the test with classmates are early evidence and do not apply to all students.</li>
+        <li><strong>No lender link.</strong> The app does not connect to Fuliza, M-Shwari or any other lender and cannot make payments.</li>
+      </ul>
+    </div>
+    <label class="check"><input type="checkbox" id="consent-check"> I have read and accept these terms.</label>
+    <button id="btn-accept">Accept and continue</button>
+    <button id="btn-decline" class="secondary-btn">Decline and sign out</button>
+  </section>
+
+  <!-- Screen 3: the app itself -->
   <section id="app-screen" hidden>
     <div class="topbar">
       <span>Signed in as <span id="who"></span></span>
-      <button id="btn-signout" class="secondary">Sign out</button>
+      <button id="btn-signout" class="small-btn">Sign out</button>
     </div>
 
     <nav class="jump">
       <a href="#add-loan">Add a loan</a>
-      <a href="#add-repayment">Repay</a>
-      <a href="#add-funds">Funds</a>
+      <a href="#repay">Repay</a>
+      <a href="#funds">Funds</a>
     </nav>
 
     <div id="summary"></div>
@@ -39,22 +62,18 @@
     <div class="card">
       <label>Lender
         <select id="lender">
-          <option>Fuliza</option>
-          <option>M-Shwari</option>
-          <option>Tala</option>
-          <option>Branch</option>
-          <option>Friend</option>
-          <option>Other</option>
+          <option>Fuliza</option><option>M-Shwari</option><option>Tala</option>
+          <option>Branch</option><option>Friend</option><option>Other</option>
         </select>
       </label>
       <label>Amount borrowed (KES) <input id="amount" type="number" min="1"></label>
-      <label>Fee or interest charged (KES) <input id="fee" type="number" min="0" value="0"></label>
+      <label>Fee or interest (KES) <input id="fee" type="number" min="0" value="0"></label>
       <label>Date borrowed <input id="date-borrowed" type="date"></label>
       <label>Due date (optional) <input id="due-date" type="date"></label>
       <button id="btn-save-loan">Save loan</button>
     </div>
 
-    <h2 id="add-repayment">Record a repayment</h2>
+    <h2 id="repay">Record a repayment</h2>
     <div class="card">
       <label>Loan <select id="repay-loan"></select></label>
       <label>Amount repaid (KES) <input id="repay-amount" type="number" min="1"></label>
@@ -62,20 +81,24 @@
       <button id="btn-save-repayment">Save repayment</button>
     </div>
 
-    <h2 id="add-funds">Next expected funds</h2>
+    <h2 id="funds">Next expected funds</h2>
     <div class="card">
       <label>Source
         <select id="fund-source">
-          <option>HELB</option>
-          <option>Allowance</option>
-          <option>Salary</option>
-          <option>Other</option>
+          <option>HELB</option><option>Allowance</option><option>Salary</option><option>Other</option>
         </select>
       </label>
       <label>Expected amount (KES) <input id="fund-amount" type="number" min="1"></label>
       <label>Expected date <input id="fund-date" type="date"></label>
       <button id="btn-save-funding">Save expected funds</button>
     </div>
+
+    <h2>Your data</h2>
+    <div class="card">
+      <p class="small">You can delete your account and all the loans, repayments and expected funds stored with it. This cannot be undone.</p>
+      <button id="btn-delete" class="secondary-btn">Delete my account and data</button>
+    </div>
+    <p class="notice">Estimates only. Not financial advice.</p>
   </section>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

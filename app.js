@@ -9,18 +9,15 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // 2. Small helper functions used everywhere
 
-// Show a message under the heading and jump to the top so it is seen
 function setStatus(message) {
   document.getElementById("status").textContent = message;
   window.scrollTo(0, 0);
 }
 
-// Format a number as shillings, e.g. 12000 becomes "KES 12,000"
 function money(n) {
   return "KES " + Math.round(n).toLocaleString("en-KE");
 }
 
-// Make an element with a CSS class and some text
 function el(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -28,24 +25,38 @@ function el(tag, className, text) {
   return node;
 }
 
-// Make a progress bar. percent runs from 0 to 100, colourClass picks the colour
 function makeBar(percent, colourClass) {
   const bar = el("div", "bar");
   const fill = el("div", "bar-fill " + colourClass);
-  fill.style.width = Math.max(0, Math.min(100, percent)) + "%"; // keep between 0 and 100
+  fill.style.width = Math.max(0, Math.min(100, percent)) + "%";
   bar.appendChild(fill);
   return bar;
 }
 
-// 3. Sign in, sign up and sign out
+// 3. Sign in, sign up, consent and sign out
 
-// Show either the sign-in box or the signed-in page
-function showScreens(user) {
-  document.getElementById("auth-screen").hidden = !!user;
-  document.getElementById("app-screen").hidden = !user;
-  if (user) {
+// NEW: show the sign-in box, the terms, or the app, depending on who is signed in
+// and whether they have accepted the terms
+async function showScreens(user) {
+  document.getElementById("auth-screen").hidden = true;
+  document.getElementById("terms-screen").hidden = true;
+  document.getElementById("app-screen").hidden = true;
+
+  if (!user) {
+    document.getElementById("auth-screen").hidden = false;
+    return;
+  }
+
+  // Row Level Security returns only this student's own profile row, if it exists
+  const { data: profile } = await db.from("profiles").select("consent_accepted").maybeSingle();
+
+  if (profile && profile.consent_accepted) {
     document.getElementById("who").textContent = user.email;
-    loadLoans(); // show the student's loans as soon as they sign in
+    document.getElementById("app-screen").hidden = false;
+    loadLoans();
+  } else {
+    document.getElementById("consent-check").checked = false;
+    document.getElementById("terms-screen").hidden = false;
   }
 }
 
@@ -71,6 +82,40 @@ async function signOut() {
   setStatus("You have signed out.");
 }
 
+// NEW: save the student's consent and its date in the profiles table
+async function acceptTerms() {
+  if (!document.getElementById("consent-check").checked) {
+    setStatus("Please tick the box to accept the terms.");
+    return;
+  }
+  const { data: userData } = await db.auth.getUser();
+  const { error } = await db.from("profiles").upsert({
+    user_id: userData.user.id,
+    consent_accepted: true,
+    consent_date: new Date().toISOString()
+  });
+  if (error) { setStatus(error.message); return; }
+  setStatus("");
+  showScreens(userData.user);
+}
+
+// NEW: a student who declines is signed out and sees no app screens
+async function declineTerms() {
+  await signOut();
+  setStatus("You need to accept the terms to use the app.");
+}
+
+// NEW: delete the account and all stored data
+async function deleteAccount() {
+  const sure = confirm("Delete your account and all your loans, repayments and expected funds? This cannot be undone.");
+  if (!sure) return;
+  const { error } = await db.rpc("delete_my_account");
+  if (error) { setStatus(error.message); return; }
+  await db.auth.signOut({ scope: "local" }); // clear the saved login on this phone
+  showScreens(null);
+  setStatus("Your account and data have been deleted.");
+}
+
 // Runs when the page opens: keeps the student signed in after a refresh
 async function start() {
   const { data } = await db.auth.getSession();
@@ -80,13 +125,12 @@ async function start() {
 // 4. Saving data
 
 async function addLoan() {
-  // Read each box on the form into one object that matches the loans table
   const loan = {
     lender: document.getElementById("lender").value,
     amount_borrowed: Number(document.getElementById("amount").value),
     fee: Number(document.getElementById("fee").value),
     date_borrowed: document.getElementById("date-borrowed").value,
-    due_date: document.getElementById("due-date").value || null // empty date becomes null
+    due_date: document.getElementById("due-date").value || null
   };
 
   if (!loan.amount_borrowed || !loan.date_borrowed) {
@@ -94,12 +138,11 @@ async function addLoan() {
     return;
   }
 
-  // user_id is not sent: the database fills it in with the signed-in student's id
   const { error } = await db.from("loans").insert(loan);
   setStatus(error ? error.message : "Loan saved.");
 
   if (!error) {
-    loadLoans(); // refresh the list so the new loan appears at once
+    loadLoans();
     document.getElementById("amount").value = "";
     document.getElementById("fee").value = 0;
     document.getElementById("date-borrowed").value = "";
@@ -141,20 +184,18 @@ async function addFunding() {
   if (!error) {
     document.getElementById("fund-amount").value = "";
     document.getElementById("fund-date").value = "";
-    loadLoans(); // reloading also refreshes the summary
+    loadLoans();
   }
 }
 
 // 5. Showing the loans and the summary
 
 async function loadLoans() {
-  // Row Level Security means each query returns only this student's rows
   const { data: loans, error } = await db.from("loans").select("*").order("date_borrowed", { ascending: false });
   if (error) { setStatus(error.message); return; }
   const { data: repayments } = await db.from("repayments").select("loan_id, amount");
 
-  // the soonest expected funds from today onwards
-  const today = new Date().toLocaleDateString("en-CA"); // gives YYYY-MM-DD
+  const today = new Date().toLocaleDateString("en-CA");
   const { data: funds } = await db.from("funding").select("*")
     .gte("expected_date", today).order("expected_date", { ascending: true }).limit(1);
   const next = funds && funds.length ? funds[0] : null;
@@ -163,10 +204,9 @@ async function loadLoans() {
   const dropdown = document.getElementById("repay-loan");
   list.innerHTML = "";
   dropdown.innerHTML = "";
-  const rows = []; // the numbers for each loan, used by the summary
+  const rows = [];
 
   loans.forEach(loan => {
-    // add up the repayments that belong to this loan
     const repaid = (repayments || [])
       .filter(r => r.loan_id === loan.loan_id)
       .reduce((sum, r) => sum + Number(r.amount), 0);
@@ -177,7 +217,6 @@ async function loadLoans() {
     const costPct = amount ? (fee / amount) * 100 : 0;
     rows.push({ amount, fee, owed, due: loan.due_date });
 
-    // choose the neutral due tag
     let tagText = "No due date", tagClass = "tag-neutral";
     if (owed <= 0) { tagText = "Fully repaid"; tagClass = "tag-ok"; }
     else if (loan.due_date && next) {
@@ -185,7 +224,6 @@ async function loadLoans() {
       else { tagText = "Due after funds"; tagClass = "tag-after"; }
     } else if (loan.due_date) { tagText = "Due " + loan.due_date; }
 
-    // build the card piece by piece
     const card = el("div", "loan-card");
     const top = el("div", "row");
     top.appendChild(el("span", "lender", loan.lender));
@@ -197,7 +235,6 @@ async function loadLoans() {
     card.appendChild(el("p", "small", `Borrowed ${money(amount)} on ${loan.date_borrowed}`));
     list.appendChild(card);
 
-    // add the loan to the repayment dropdown
     const option = document.createElement("option");
     option.value = loan.loan_id;
     option.textContent = `${loan.lender} ${loan.date_borrowed} (${money(owed)} owed)`;
@@ -218,20 +255,17 @@ function renderSummary(rows, next) {
   const totalCost = rows.reduce((sum, r) => sum + r.fee, 0);
   const costPct = totalBorrowed ? (totalCost / totalBorrowed) * 100 : 0;
 
-  // the large blue card at the top
   const hero = el("div", "hero");
   hero.appendChild(el("p", "hero-label", "Total owed"));
   hero.appendChild(el("p", "hero-number", money(totalOwed)));
   hero.appendChild(el("p", "hero-sub", `Cost so far ${money(totalCost)} (${costPct.toFixed(1)}% of the amount borrowed)`));
   box.appendChild(hero);
 
-  // the next funds card with its bar
   const card = el("div", "card");
   card.appendChild(el("p", "card-title", "Next expected funds"));
   if (!next) {
     card.appendChild(el("p", "small", "No expected funds recorded. Add them to see how much is already due."));
   } else {
-    // loans with no due date, or due on or before the funds date, count as already due
     const committed = active
       .filter(r => !r.due || r.due <= next.expected_date)
       .reduce((sum, r) => sum + r.owed, 0);
@@ -257,4 +291,7 @@ document.getElementById("btn-signout").addEventListener("click", signOut);
 document.getElementById("btn-save-loan").addEventListener("click", addLoan);
 document.getElementById("btn-save-repayment").addEventListener("click", addRepayment);
 document.getElementById("btn-save-funding").addEventListener("click", addFunding);
+document.getElementById("btn-accept").addEventListener("click", acceptTerms);
+document.getElementById("btn-decline").addEventListener("click", declineTerms);
+document.getElementById("btn-delete").addEventListener("click", deleteAccount);
 start();
