@@ -1,6 +1,34 @@
-body { font-family: sans-serif; font-size: 18px; max-width: 480px; margin: auto; padding: 1rem; }
-input, button, select { font-size: 18px; width: 100%; padding: 0.5rem; margin: 0.3rem 0; box-sizing: border-box; }
-label { display: block; margin-top: 0.6rem; }
-.loan-card { border: 1px solid #999; border-radius: 8px; padding: 0.6rem; margin: 0.5rem 0; }
-#summary p { margin: 0.4rem 0; }
-.notice { font-size: 15px; color: #444; }
+body { font-family: sans-serif; font-size: 18px; max-width: 480px; margin: auto; padding: 1rem; background: #f3f5f8; color: #1d2733; }
+h1 { font-size: 24px; }
+h2 { font-size: 20px; margin: 1.4rem 0 0.5rem; scroll-margin-top: 1rem; }
+label { display: block; margin-top: 0.6rem; font-size: 16px; }
+input, select, button { font-size: 18px; width: 100%; padding: 0.55rem; margin: 0.3rem 0; box-sizing: border-box; border: 1px solid #9aa5b1; border-radius: 8px; background: #fff; }
+button { background: #1d2733; color: #fff; border: none; cursor: pointer; }
+.small-btn { width: auto; padding: 0.35rem 0.9rem; font-size: 15px; }
+.topbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 15px; }
+.jump { display: flex; gap: 8px; margin: 0.6rem 0; }
+.jump a { font-size: 15px; padding: 6px 12px; border: 1px solid #9aa5b1; border-radius: 16px; color: #1d2733; text-decoration: none; background: #fff; }
+
+.card, .loan-card { background: #fff; border-radius: 12px; padding: 0.9rem; margin: 0.6rem 0; }
+.hero { background: #e6f1fb; color: #0c447c; border-radius: 12px; padding: 1rem; margin: 0.6rem 0; }
+.hero-label { margin: 0; font-size: 15px; }
+.hero-number { margin: 0.2rem 0; font-size: 32px; font-weight: bold; }
+.hero-sub { margin: 0; font-size: 15px; }
+.card-title { margin: 0 0 0.3rem; font-weight: bold; }
+
+.row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.lender { font-weight: bold; font-size: 19px; }
+.owed { font-size: 22px; font-weight: bold; margin: 0.4rem 0; }
+.small { font-size: 15px; color: #4a5663; margin: 0.25rem 0; }
+.notice { font-size: 14px; color: #4a5663; }
+
+.bar { height: 12px; border-radius: 6px; background: #dde2e8; overflow: hidden; margin: 0.4rem 0; }
+.bar-fill { height: 100%; border-radius: 6px; }
+.fill-blue { background: #2b6cb0; }
+.fill-green { background: #3b8a3e; }
+
+.tag { font-size: 13px; padding: 3px 10px; border-radius: 12px; white-space: nowrap; }
+.tag-before { background: #fdf0d5; color: #7a4b05; }
+.tag-after { background: #e6f1fb; color: #0c447c; }
+.tag-ok { background: #e4f3dc; color: #27500a; }
+.tag-neutral { background: #eceef1; color: #444; }

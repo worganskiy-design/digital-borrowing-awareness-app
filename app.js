@@ -1,17 +1,52 @@
+// ------------------------------------------------------------
+// Digital Borrowing Awareness App: app.js
+// ------------------------------------------------------------
+
+// 1. Connection to Supabase (the publishable key is safe in browser code)
 const SUPABASE_URL = "https://casccwtrogtjxugomvmx.supabase.co";
 const SUPABASE_KEY = "sb_publishable_BBwesK6QZpHuVhOlWzJVkg_6YHgWQdb";
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// 2. Small helper functions used everywhere
+
+// Show a message under the heading and jump to the top so it is seen
 function setStatus(message) {
   document.getElementById("status").textContent = message;
-  window.scrollTo(0, 0); // jump to the top so the message is seen
+  window.scrollTo(0, 0);
 }
 
+// Format a number as shillings, e.g. 12000 becomes "KES 12,000"
+function money(n) {
+  return "KES " + Math.round(n).toLocaleString("en-KE");
+}
+
+// Make an element with a CSS class and some text
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+// Make a progress bar. percent runs from 0 to 100, colourClass picks the colour
+function makeBar(percent, colourClass) {
+  const bar = el("div", "bar");
+  const fill = el("div", "bar-fill " + colourClass);
+  fill.style.width = Math.max(0, Math.min(100, percent)) + "%"; // keep between 0 and 100
+  bar.appendChild(fill);
+  return bar;
+}
+
+// 3. Sign in, sign up and sign out
+
+// Show either the sign-in box or the signed-in page
 function showScreens(user) {
   document.getElementById("auth-screen").hidden = !!user;
   document.getElementById("app-screen").hidden = !user;
-  if (user) document.getElementById("who").textContent = user.email;
-  if (user) loadLoans(); // NEW: show the student's loans as soon as they sign in
+  if (user) {
+    document.getElementById("who").textContent = user.email;
+    loadLoans(); // show the student's loans as soon as they sign in
+  }
 }
 
 async function signUp() {
@@ -36,10 +71,13 @@ async function signOut() {
   setStatus("You have signed out.");
 }
 
+// Runs when the page opens: keeps the student signed in after a refresh
 async function start() {
   const { data } = await db.auth.getSession();
   showScreens(data.session ? data.session.user : null);
 }
+
+// 4. Saving data
 
 async function addLoan() {
   // Read each box on the form into one object that matches the loans table
@@ -60,50 +98,13 @@ async function addLoan() {
   const { error } = await db.from("loans").insert(loan);
   setStatus(error ? error.message : "Loan saved.");
 
-    if (!error) {
-    loadLoans(); // NEW: refresh the list so the new loan appears at once
+  if (!error) {
+    loadLoans(); // refresh the list so the new loan appears at once
     document.getElementById("amount").value = "";
     document.getElementById("fee").value = 0;
     document.getElementById("date-borrowed").value = "";
     document.getElementById("due-date").value = "";
   }
-}
-
-async function loadLoans() {
-  // Row Level Security means this returns only the signed-in student's loans
-  const { data: loans, error } = await db
-    .from("loans").select("*").order("date_borrowed", { ascending: false });
-  if (error) { setStatus(error.message); return; }
-  const { data: repayments } = await db.from("repayments").select("loan_id, amount");
-
-  const list = document.getElementById("loan-list");
-  const dropdown = document.getElementById("repay-loan");
-  const rows = [];
-  list.innerHTML = "";
-  dropdown.innerHTML = "";
-
-  if (loans.length === 0) { list.textContent = "No loans recorded yet."; showSummary([]); return; }
-
-  loans.forEach(loan => {
-    // add up the repayments that belong to this loan
-    const repaid = (repayments || [])
-      .filter(r => r.loan_id === loan.loan_id)
-      .reduce((sum, r) => sum + Number(r.amount), 0);
-    const owed = Number(loan.amount_borrowed) + Number(loan.fee) - repaid;
-    rows.push({ amount: Number(loan.amount_borrowed), fee: Number(loan.fee), owed, due: loan.due_date });
-
-    const card = document.createElement("div");
-    card.className = "loan-card";
-    const costPct = (Number(loan.fee) / Number(loan.amount_borrowed)) * 100;
-card.textContent = `${loan.lender}, borrowed ${loan.date_borrowed}: ${money(loan.amount_borrowed)} + fee ${money(loan.fee)} (${costPct.toFixed(1)}% of the amount) - repaid ${money(repaid)} = ${money(owed)} owed`;
-    list.appendChild(card);
-
-    const option = document.createElement("option");
-    option.value = loan.loan_id;
-    option.textContent = `${loan.lender} ${loan.date_borrowed} (KES ${owed} owed)`;
-    dropdown.appendChild(option);
-  });
-  showSummary(rows);
 }
 
 async function addRepayment() {
@@ -123,10 +124,6 @@ async function addRepayment() {
     document.getElementById("repay-date").value = "";
     loadLoans();
   }
-}
-// Format a number as shillings, e.g. 12000 becomes "KES 12,000"
-function money(n) {
-  return "KES " + Math.round(n).toLocaleString("en-KE");
 }
 
 async function addFunding() {
@@ -148,54 +145,116 @@ async function addFunding() {
   }
 }
 
-async function showSummary(rows) {
+// 5. Showing the loans and the summary
+
+async function loadLoans() {
+  // Row Level Security means each query returns only this student's rows
+  const { data: loans, error } = await db.from("loans").select("*").order("date_borrowed", { ascending: false });
+  if (error) { setStatus(error.message); return; }
+  const { data: repayments } = await db.from("repayments").select("loan_id, amount");
+
+  // the soonest expected funds from today onwards
+  const today = new Date().toLocaleDateString("en-CA"); // gives YYYY-MM-DD
+  const { data: funds } = await db.from("funding").select("*")
+    .gte("expected_date", today).order("expected_date", { ascending: true }).limit(1);
+  const next = funds && funds.length ? funds[0] : null;
+
+  const list = document.getElementById("loan-list");
+  const dropdown = document.getElementById("repay-loan");
+  list.innerHTML = "";
+  dropdown.innerHTML = "";
+  const rows = []; // the numbers for each loan, used by the summary
+
+  loans.forEach(loan => {
+    // add up the repayments that belong to this loan
+    const repaid = (repayments || [])
+      .filter(r => r.loan_id === loan.loan_id)
+      .reduce((sum, r) => sum + Number(r.amount), 0);
+    const amount = Number(loan.amount_borrowed);
+    const fee = Number(loan.fee);
+    const owed = amount + fee - repaid;
+    const repaidPct = (amount + fee) ? (repaid / (amount + fee)) * 100 : 0;
+    const costPct = amount ? (fee / amount) * 100 : 0;
+    rows.push({ amount, fee, owed, due: loan.due_date });
+
+    // choose the neutral due tag
+    let tagText = "No due date", tagClass = "tag-neutral";
+    if (owed <= 0) { tagText = "Fully repaid"; tagClass = "tag-ok"; }
+    else if (loan.due_date && next) {
+      if (loan.due_date <= next.expected_date) { tagText = "Due before funds"; tagClass = "tag-before"; }
+      else { tagText = "Due after funds"; tagClass = "tag-after"; }
+    } else if (loan.due_date) { tagText = "Due " + loan.due_date; }
+
+    // build the card piece by piece
+    const card = el("div", "loan-card");
+    const top = el("div", "row");
+    top.appendChild(el("span", "lender", loan.lender));
+    top.appendChild(el("span", "tag " + tagClass, tagText));
+    card.appendChild(top);
+    card.appendChild(el("p", "owed", money(Math.max(owed, 0)) + " owed"));
+    card.appendChild(makeBar(repaidPct, "fill-green"));
+    card.appendChild(el("p", "small", `Repaid ${Math.round(repaidPct)}% · Cost ${money(fee)} (${costPct.toFixed(1)}% of the amount)`));
+    card.appendChild(el("p", "small", `Borrowed ${money(amount)} on ${loan.date_borrowed}`));
+    list.appendChild(card);
+
+    // add the loan to the repayment dropdown
+    const option = document.createElement("option");
+    option.value = loan.loan_id;
+    option.textContent = `${loan.lender} ${loan.date_borrowed} (${money(owed)} owed)`;
+    dropdown.appendChild(option);
+  });
+
+  if (loans.length === 0) list.appendChild(el("p", "small", "No loans recorded yet."));
+  renderSummary(rows, next);
+}
+
+function renderSummary(rows, next) {
   const box = document.getElementById("summary");
   box.innerHTML = "";
-  const addLine = (text, cls) => {
-    const p = document.createElement("p");
-    p.textContent = text;
-    if (cls) p.className = cls;
-    box.appendChild(p);
-  };
 
-  // Loans that still have a balance
   const active = rows.filter(r => r.owed > 0);
   const totalOwed = active.reduce((sum, r) => sum + r.owed, 0);
   const totalBorrowed = rows.reduce((sum, r) => sum + r.amount, 0);
   const totalCost = rows.reduce((sum, r) => sum + r.fee, 0);
   const costPct = totalBorrowed ? (totalCost / totalBorrowed) * 100 : 0;
 
-  addLine("Total owed: " + money(totalOwed));
-  addLine(`Cost of borrowing so far: ${money(totalCost)} (${costPct.toFixed(1)}% of the amount borrowed)`);
+  // the large blue card at the top
+  const hero = el("div", "hero");
+  hero.appendChild(el("p", "hero-label", "Total owed"));
+  hero.appendChild(el("p", "hero-number", money(totalOwed)));
+  hero.appendChild(el("p", "hero-sub", `Cost so far ${money(totalCost)} (${costPct.toFixed(1)}% of the amount borrowed)`));
+  box.appendChild(hero);
 
-  // The next expected funds are the soonest ones from today onwards
-  const today = new Date().toLocaleDateString("en-CA"); // gives YYYY-MM-DD in local time
-  const { data: funds } = await db.from("funding").select("*")
-    .gte("expected_date", today).order("expected_date", { ascending: true }).limit(1);
-
-  if (!funds || funds.length === 0) {
-    addLine("No expected funds recorded. Add the next expected funds to see how much is already due.");
+  // the next funds card with its bar
+  const card = el("div", "card");
+  card.appendChild(el("p", "card-title", "Next expected funds"));
+  if (!next) {
+    card.appendChild(el("p", "small", "No expected funds recorded. Add them to see how much is already due."));
   } else {
-    const next = funds[0];
-    // Loans with no due date, or a due date on or before the funds date, count as due
+    // loans with no due date, or due on or before the funds date, count as already due
     const committed = active
       .filter(r => !r.due || r.due <= next.expected_date)
       .reduce((sum, r) => sum + r.owed, 0);
-    const left = Number(next.expected_amount) - committed;
+    const fundsAmount = Number(next.expected_amount);
+    const pct = fundsAmount ? (committed / fundsAmount) * 100 : 0;
+    const left = fundsAmount - committed;
 
-    addLine(`Next expected funds: ${money(next.expected_amount)} from ${next.source} on ${next.expected_date}`);
-    addLine("Already due to lenders by then: " + money(committed));
-    addLine(left >= 0
-      ? "Left after those loans: " + money(left)
-      : "The loans due are " + money(-left) + " more than the expected funds.");
+    card.appendChild(el("p", "small", `${next.source}, ${next.expected_date}: ${money(fundsAmount)}`));
+    card.appendChild(makeBar(pct, "fill-blue"));
+    const row = el("div", "row");
+    row.appendChild(el("span", "small", "Due by then " + money(committed)));
+    row.appendChild(el("span", "small", left >= 0 ? "Left " + money(left) : "Short by " + money(-left)));
+    card.appendChild(row);
   }
-  addLine("These figures are estimates from the details you entered. They are not the lender's statement and not financial advice.", "notice");
+  box.appendChild(card);
+  box.appendChild(el("p", "notice", "These figures are estimates from the details you entered. They are not the lender's statement and not financial advice."));
 }
 
+// 6. Connect the buttons to the functions (keep start() last)
 document.getElementById("btn-signin").addEventListener("click", signIn);
 document.getElementById("btn-signup").addEventListener("click", signUp);
 document.getElementById("btn-signout").addEventListener("click", signOut);
 document.getElementById("btn-save-loan").addEventListener("click", addLoan);
-document.getElementById("btn-save-repayment").addEventListener("click", addRepayment); // NEW
+document.getElementById("btn-save-repayment").addEventListener("click", addRepayment);
 document.getElementById("btn-save-funding").addEventListener("click", addFunding);
 start();

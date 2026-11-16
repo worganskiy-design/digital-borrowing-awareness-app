@@ -8,62 +8,77 @@
 </head>
 <body>
   <h1>Digital Borrowing Awareness App</h1>
-<p id="status"></p>
+  <p id="status" role="status"></p>
 
-<section id="auth-screen">
-  <h2>Sign in or register</h2>
-  <label>Email <input id="email" type="email"></label>
-  <label>Password <input id="password" type="password"></label>
-  <button id="btn-signin">Sign in</button>
-  <button id="btn-signup">Register</button>
-</section>
+  <section id="auth-screen">
+    <h2>Sign in or register</h2>
+    <label>Email <input id="email" type="email"></label>
+    <label>Password <input id="password" type="password"></label>
+    <button id="btn-signin">Sign in</button>
+    <button id="btn-signup" class="secondary">Register</button>
+  </section>
 
-<section id="app-screen" hidden>
-  <p>Signed in as <span id="who"></span></p>
-  <button id="btn-signout">Sign out</button>
-  <h2>Add a loan</h2>
-<label>Lender
-  <select id="lender">
-    <option>Fuliza</option>
-    <option>M-Shwari</option>
-    <option>Tala</option>
-    <option>Branch</option>
-    <option>Friend or family</option>
-    <option>Other</option>
-  </select>
-</label>
-<label>Amount borrowed (KES) <input id="amount" type="number" min="1"></label>
-<label>Fee or interest charged (KES) <input id="fee" type="number" min="0" value="0"></label>
-<label>Date borrowed <input id="date-borrowed" type="date"></label>
-<label>Due date (optional) <input id="due-date" type="date"></label>
-<button id="btn-save-loan">Save loan</button>
-<h2>Record a repayment</h2>
-<label>Loan <select id="repay-loan"></select></label>
-<label>Amount repaid (KES) <input id="repay-amount" type="number" min="1"></label>
-<label>Date repaid <input id="repay-date" type="date"></label>
-<button id="btn-save-repayment">Save repayment</button>
+  <section id="app-screen" hidden>
+    <div class="topbar">
+      <span>Signed in as <span id="who"></span></span>
+      <button id="btn-signout" class="secondary">Sign out</button>
+    </div>
 
-<h2>Next expected funds</h2>
-<label>Source
-  <select id="fund-source">
-    <option>HELB</option>
-    <option>Allowance</option>
-    <option>Salary</option>
-    <option>Other</option>
-  </select>
-</label>
-<label>Expected amount (KES) <input id="fund-amount" type="number" min="1"></label>
-<label>Expected date <input id="fund-date" type="date"></label>
-<button id="btn-save-funding">Save expected funds</button>
+    <nav class="jump">
+      <a href="#add-loan">Add a loan</a>
+      <a href="#add-repayment">Repay</a>
+      <a href="#add-funds">Funds</a>
+    </nav>
 
-<h2>Summary</h2>
-<div id="summary"></div>
+    <div id="summary"></div>
 
-<h2>My loans</h2>
-<div id="loan-list"></div>
-</section>
+    <h2>My loans</h2>
+    <div id="loan-list"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js"></script>
+    <h2 id="add-loan">Add a loan</h2>
+    <div class="card">
+      <label>Lender
+        <select id="lender">
+          <option>Fuliza</option>
+          <option>M-Shwari</option>
+          <option>Tala</option>
+          <option>Branch</option>
+          <option>Friend</option>
+          <option>Other</option>
+        </select>
+      </label>
+      <label>Amount borrowed (KES) <input id="amount" type="number" min="1"></label>
+      <label>Fee or interest charged (KES) <input id="fee" type="number" min="0" value="0"></label>
+      <label>Date borrowed <input id="date-borrowed" type="date"></label>
+      <label>Due date (optional) <input id="due-date" type="date"></label>
+      <button id="btn-save-loan">Save loan</button>
+    </div>
+
+    <h2 id="add-repayment">Record a repayment</h2>
+    <div class="card">
+      <label>Loan <select id="repay-loan"></select></label>
+      <label>Amount repaid (KES) <input id="repay-amount" type="number" min="1"></label>
+      <label>Date repaid <input id="repay-date" type="date"></label>
+      <button id="btn-save-repayment">Save repayment</button>
+    </div>
+
+    <h2 id="add-funds">Next expected funds</h2>
+    <div class="card">
+      <label>Source
+        <select id="fund-source">
+          <option>HELB</option>
+          <option>Allowance</option>
+          <option>Salary</option>
+          <option>Other</option>
+        </select>
+      </label>
+      <label>Expected amount (KES) <input id="fund-amount" type="number" min="1"></label>
+      <label>Expected date <input id="fund-date" type="date"></label>
+      <button id="btn-save-funding">Save expected funds</button>
+    </div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js"></script>
 </body>
 </html>
